@@ -25,11 +25,16 @@ class DataPoint(ABC):
 
 
 class MonthlyAndWeeklyStatistics:
-    def __init__(self, start, end, tzinfo=datetime.timezone.utc) -> None:
+    def __init__(self, start, end, tzinfo=datetime.timezone.utc, formula='avg') -> None:
         self.start = start
         self.end = end
         self.target_tz = tzinfo
         self.stats = {}
+        self.formula = {
+            'avg': self.average,
+            'sum': self.sum,
+            'cnt': self.count
+        }[formula]
         self.fully_encompassed_weeks_in_target_tz(start.astimezone(self.target_tz), end.astimezone(self.target_tz))
         self.fully_encompassed_months_in_target_tz(start.astimezone(self.target_tz), end.astimezone(self.target_tz))
 
@@ -56,28 +61,28 @@ class MonthlyAndWeeklyStatistics:
         month_key = datapoint.point_in_time().astimezone(self.target_tz).strftime("%Ym%m")
         week_key = datapoint.point_in_time().astimezone(self.target_tz).strftime("%Yw%V")
 
-        rating = datapoint.value()
+        value = datapoint.value()
 
         if week_key in self.stats:
             (sum, count) = self.stats[week_key]
-            self.stats[week_key] = (sum + rating, count + 1)
+            self.stats[week_key] = (sum + value, count + 1)
 
         if month_key in self.stats:
             (sum, count) = self.stats[month_key]
-            self.stats[month_key] = (sum + rating, count + 1)
+            self.stats[month_key] = (sum + value, count + 1)
 
     def print_csv(self, nbr_weeks=5):
-        last_few_weeks = sorted([(k, int(k[-2:]), MonthlyAndWeeklyStatistics.average(s, n)) for (k, (s, n)) in self.stats.items() if 'w' in k])[-nbr_weeks:]
+        last_few_weeks = sorted([(k, int(k[-2:]), self.formula(s, n)) for (k, (s, n)) in self.stats.items() if 'w' in k])[-nbr_weeks:]
 
         sub_key = "%dm" % datetime.datetime.now(self.target_tz).year
-        months_so_far = sorted([(k, month_keys[int(k[-2:]) - 1], MonthlyAndWeeklyStatistics.average(s, n)) for (k, (s, n)) in self.stats.items() if sub_key in k])
+        months_so_far = sorted([(k, month_keys[int(k[-2:]) - 1], self.formula(s, n)) for (k, (s, n)) in self.stats.items() if sub_key in k])
 
         gdoc_format = [*last_few_weeks, ('', '', ''), *months_so_far]
 
-        (_, headers, averages) = list(zip(*gdoc_format))
+        (_, headers, values) = list(zip(*gdoc_format))
 
         print(*headers, sep=", ")
-        print(*averages, sep=", ")
+        print(*values, sep=", ")
 
     @staticmethod
     def first_monday(succeeding):
@@ -105,4 +110,12 @@ class MonthlyAndWeeklyStatistics:
 
     @staticmethod
     def average(sum, cnt, decimals=2):
-        return round(sum/float(cnt), 2)
+        return round(sum/float(cnt), 2) if cnt else 0
+
+    @staticmethod
+    def sum(sum, _cnt, decimals=2):
+        return round(float(sum), 2)
+
+    @staticmethod
+    def count(sum, cnt, decimals=2):
+        return round(float(cnt), 2)
