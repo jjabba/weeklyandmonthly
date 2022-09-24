@@ -5,6 +5,7 @@
 # The bounds used to partition data into weeks and months defaults to utc.
 #
 
+from dataclasses import dataclass
 import datetime
 
 from calendar import monthrange
@@ -71,18 +72,12 @@ class MonthlyAndWeeklyStatistics:
             (sum, count) = self.stats[month_key]
             self.stats[month_key] = (sum + value, count + 1)
 
-    def print_csv(self, nbr_weeks=5):
-        last_few_weeks = sorted([(k, int(k[-2:]), self.formula(s, n)) for (k, (s, n)) in self.stats.items() if 'w' in k])[-nbr_weeks:]
+    def past_weeks(self, nbr_weeks=5):
+        return sorted([(k, int(k[-2:]), self.formula(s, n)) for (k, (s, n)) in self.stats.items() if 'w' in k])[-nbr_weeks:]
 
+    def past_months_this_year(self):
         sub_key = "%dm" % datetime.datetime.now(self.target_tz).year
-        months_so_far = sorted([(k, month_keys[int(k[-2:]) - 1], self.formula(s, n)) for (k, (s, n)) in self.stats.items() if sub_key in k])
-
-        gdoc_format = [*last_few_weeks, ('', '', ''), *months_so_far]
-
-        (_, headers, values) = list(zip(*gdoc_format))
-
-        print(*headers, sep=", ")
-        print(*values, sep=", ")
+        return sorted([(k, month_keys[int(k[-2:]) - 1], self.formula(s, n)) for (k, (s, n)) in self.stats.items() if sub_key in k])
 
     @staticmethod
     def first_monday(succeeding):
