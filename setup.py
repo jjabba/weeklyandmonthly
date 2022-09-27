@@ -8,7 +8,7 @@ except IOError:
 
 setup(
     name="WeeklyAndMonthly",
-    version="0.1.1",
+    version="0.1.2",
     description="Calculate weekly and monthly averages from a set of datapoints.",
     license="MIT",
     author="Karl Berggren",
