@@ -12,9 +12,6 @@ from calendar import monthrange
 from tokenize import Number
 from abc import ABC, abstractmethod
 
-month_keys = [datetime.date(1982, m, 1).strftime('%b') for m in range(1,13)]
-
-
 class DataPoint(ABC):
     @abstractmethod
     def point_in_time(self) -> datetime:
