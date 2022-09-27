@@ -41,7 +41,7 @@ class MonthlyAndWeeklyStatistics:
         delta = datetime.timedelta(weeks=1, microseconds=-1)
 
         while (start_of_monday + delta) <= end:
-            key = start_of_monday.strftime("%Yw%V")
+            key = MonthlyAndWeeklyStatistics.week_key(start_of_monday)
             start_of_monday = start_of_monday + datetime.timedelta(weeks=1)
             self.stats[key] = (0, 0)
 
@@ -50,14 +50,15 @@ class MonthlyAndWeeklyStatistics:
         end_of_month = MonthlyAndWeeklyStatistics.last_moment_of_month(start_of_month)
 
         while end_of_month <= end:
-            key = start_of_month.strftime("%Ym%m")
+            key = MonthlyAndWeeklyStatistics.month_key(start_of_month)
             self.stats[key] = (0, 0)
             start_of_month = MonthlyAndWeeklyStatistics.first_moment_of_month(end_of_month)
             end_of_month = MonthlyAndWeeklyStatistics.last_moment_of_month(start_of_month)
 
     def consider(self, datapoint):
-        month_key = datapoint.point_in_time().astimezone(self.target_tz).strftime("%Ym%m")
-        week_key = datapoint.point_in_time().astimezone(self.target_tz).strftime("%Yw%V")
+        t = datapoint.point_in_time().astimezone(self.target_tz)
+        month_key = MonthlyAndWeeklyStatistics.month_key(t)
+        week_key = MonthlyAndWeeklyStatistics.week_key(t)
 
         value = datapoint.value()
 
@@ -70,11 +71,11 @@ class MonthlyAndWeeklyStatistics:
             self.stats[month_key] = (sum + value, count + 1)
 
     def past_weeks(self, nbr_weeks=5):
-        return sorted([(k, int(k[-2:]), self.formula(s, n)) for (k, (s, n)) in self.stats.items() if 'w' in k])[-nbr_weeks:]
+        return sorted([((y, unit, w), self.formula(s, n)) for ((y, unit, w), (s, n)) in self.stats.items() if 'w' == unit])[-nbr_weeks:]
 
     def past_months_this_year(self):
-        sub_key = "%dm" % datetime.datetime.now(self.target_tz).year
-        return sorted([(k, month_keys[int(k[-2:]) - 1], self.formula(s, n)) for (k, (s, n)) in self.stats.items() if sub_key in k])
+        year = datetime.datetime.now(self.target_tz).year
+        return sorted([((y, unit, m), self.formula(s, n)) for ((y, unit, m), (s, n)) in self.stats.items() if year == y and unit == 'm'])
 
     @staticmethod
     def first_monday(succeeding):
@@ -111,3 +112,11 @@ class MonthlyAndWeeklyStatistics:
     @staticmethod
     def count(sum, cnt, decimals=2):
         return round(float(cnt), 2)
+
+    @staticmethod
+    def month_key(dt):
+        return (dt.year, 'm', dt.month)
+
+    @staticmethod
+    def week_key(dt):
+         return (dt.year, 'w', int(dt.strftime("%V")))
